@@ -1,0 +1,13 @@
+<script type="text/javascript">
+baseUrl = "https://coinmarketcal.com/en/api/widget?limit=10&categories=4&eventEvenColor=FFFFFF&eventOddColor=FFFFFF&bordersColor=D0D0D0&textColor=000000"
+var scripts = document.getElementsByTagName("script");
+var embedder = scripts[ scripts.length - 1 ];
+(function (){
+var appName = encodeURIComponent(window.location.hostname);
+if(appName==""){appName="local";}
+var s = document.createElement("script");
+s.type = "text/javascript";
+s.src = baseUrl + "&app=" + appName;
+s.async = true;embedder.parentNode.appendChild(s);
+})();
+</script>
