@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pemeriksa Info Pemanggil</title>
+    <title>Pemeriksa Info Pemanggil & Lingkungan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,78 +12,151 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        .info-box {
+            @apply bg-gray-100 rounded-lg p-3 text-left;
+        }
+        .info-box p {
+            @apply font-mono break-all;
+        }
+        .info-title {
+            @apply text-lg font-semibold text-gray-700 mb-2 text-left;
+        }
     </style>
 </head>
 <body class="h-full flex items-center justify-center p-6 bg-gray-100">
-    <div class="max-w-xl w-full bg-white rounded-xl shadow-lg p-8 text-center">
-        <div class="mb-6">
+    <div class="max-w-2xl w-full bg-white rounded-xl shadow-lg p-8">
+        <div class="text-center mb-6">
             <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
             </svg>
+            <h1 class="text-2xl font-bold text-gray-800 mt-4">Info Pemanggil & Lingkungan</h1>
         </div>
-        <h1 class="text-2xl font-bold text-gray-800 mb-4">Info Pemanggil Iframe</h1>
         
-        <!-- Bagian untuk Domain -->
-        <div class="text-left mb-5">
-            <h2 class="text-lg font-semibold text-gray-700 mb-2">Domain Pemanggil:</h2>
-            <div id="domain-display" class="bg-gray-100 rounded-lg p-3">
-                <p class="text-md font-mono font-semibold text-blue-700 break-all">Mendeteksi...</p>
+        <div class="space-y-5">
+            <!-- Info Alamat IP -->
+            <div>
+                <h2 class="info-title">Alamat IP Pengguna (Pemanggil)</h2>
+                <div id="ip-display" class="info-box">
+                    <p class="text-sm text-blue-700">Mendeteksi...</p>
+                </div>
+                <p class="text-xs text-gray-500 mt-1 text-left">Didapatkan melalui layanan eksternal (API).</p>
+            </div>
+
+            <!-- Info dari document.referrer -->
+            <div>
+                <h2 class="info-title">URL Pemanggil (dari referrer)</h2>
+                <div id="url-display" class="info-box">
+                    <p class="text-sm text-blue-700">Mendeteksi...</p>
+                </div>
+            </div>
+
+            <!-- Info dari ancestorOrigins -->
+            <div>
+                <h2 class="info-title">Domain Pemanggil (dari ancestorOrigins)</h2>
+                <div id="origin-display" class="info-box">
+                    <p class="text-sm text-blue-700">Mendeteksi...</p>
+                </div>
+                 <p class="text-xs text-gray-500 mt-1 text-left">Metode ini seringkali lebih akurat jika URL di atas tidak lengkap.</p>
+            </div>
+
+            <!-- Info Browser -->
+            <div>
+                <h2 class="info-title">Info Browser (User Agent)</h2>
+                <div id="user-agent-display" class="info-box">
+                    <p class="text-xs text-blue-700">Mendeteksi...</p>
+                </div>
+            </div>
+
+            <!-- Info Resolusi Layar -->
+            <div>
+                <h2 class="info-title">Resolusi Layar Pengguna</h2>
+                <div id="screen-res-display" class="info-box">
+                    <p class="text-sm text-blue-700">Mendeteksi...</p>
+                </div>
             </div>
         </div>
 
-        <!-- Bagian untuk URL Lengkap -->
-        <div class="text-left">
-            <h2 class="text-lg font-semibold text-gray-700 mb-2">URL Lengkap Pemanggil:</h2>
-            <div id="url-display" class="bg-gray-100 rounded-lg p-3">
-                <p class="text-sm font-mono text-blue-700 break-all">Mendeteksi...</p>
-            </div>
-        </div>
-
-        <p id="info-message" class="text-sm text-gray-500 mt-6"></p>
+        <p id="info-message" class="text-sm text-center text-gray-500 mt-8"></p>
     </div>
 
     <script>
-        // This script runs when the page loads to detect the parent domain and URL.
         window.onload = function() {
-            const domainDisplayElement = document.getElementById('domain-display');
+            // Element Targets
+            const ipDisplayElement = document.getElementById('ip-display');
             const urlDisplayElement = document.getElementById('url-display');
+            const originDisplayElement = document.getElementById('origin-display');
+            const userAgentDisplayElement = document.getElementById('user-agent-display');
+            const screenResDisplayElement = document.getElementById('screen-res-display');
             const infoElement = document.getElementById('info-message');
 
+            const isInsideIframe = window.self !== window.top;
+
+            // --- Fungsi untuk mengambil IP ---
+            const fetchIpAddress = () => {
+                fetch('https://api.ipify.org?format=json')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        ipDisplayElement.innerHTML = `<p class="text-sm font-semibold text-green-700">${data.ip}</p>`;
+                    })
+                    .catch(error => {
+                        console.error('Failed to fetch IP address:', error);
+                        ipDisplayElement.innerHTML = `<p class="text-sm font-semibold text-red-700">Gagal Mendapatkan IP</p>`;
+                    });
+            };
+            
+            // Panggil fungsi untuk mendapatkan IP
+            fetchIpAddress();
+
+            // --- Lanjutkan dengan info lainnya ---
             try {
-                // Check if the page is actually inside an iframe.
-                const isInsideIframe = window.self !== window.top;
-
+                // 1. Dapatkan info dari document.referrer
                 if (isInsideIframe) {
-                    // document.referrer gives the URL of the page that linked to this one.
-                    // In the case of an iframe, it's the parent page's URL.
                     const referrerUrl = document.referrer;
-
                     if (referrerUrl) {
-                        // Use the URL constructor to easily parse the URL and get the hostname (domain).
-                        const parentDomain = new URL(referrerUrl).hostname;
-                        
-                        domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-green-700 break-all">${parentDomain}</p>`;
-                        urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-green-700 break-all">${referrerUrl}</p>`;
-                        infoElement.textContent = 'Domain dan URL berhasil dideteksi menggunakan document.referrer.';
+                        urlDisplayElement.innerHTML = `<p class="text-sm font-semibold text-green-700">${referrerUrl}</p>`;
                     } else {
-                        // This can happen if the parent page has a strict Referrer-Policy.
-                        domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-red-700">Tidak Dapat Diakses</p>`;
-                        urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-red-700 break-all">Tidak Dapat Diakses</p>`;
-                        infoElement.textContent = 'Tidak dapat mendeteksi info pemanggil. Kemungkinan halaman induk memiliki kebijakan "Referrer-Policy: no-referrer".';
+                        urlDisplayElement.innerHTML = `<p class="text-sm font-semibold text-red-700">Tidak Dapat Diakses (Referrer-Policy)</p>`;
                     }
                 } else {
-                    // This message shows if the page is opened directly, not in an iframe.
-                    domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-yellow-700">Tidak dalam Iframe</p>`;
-                    urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-yellow-700 break-all">Tidak dalam Iframe</p>`;
-                    infoElement.textContent = 'Halaman ini tidak sedang dimuat di dalam sebuah iframe.';
+                     urlDisplayElement.innerHTML = `<p class="text-sm font-semibold text-yellow-700">Tidak dalam Iframe</p>`;
+                }
+
+                // 2. Dapatkan info dari window.location.ancestorOrigins
+                if (isInsideIframe && window.location.ancestorOrigins && window.location.ancestorOrigins.length > 0) {
+                    const parentOrigin = window.location.ancestorOrigins[0];
+                    originDisplayElement.innerHTML = `<p class="text-sm font-semibold text-green-700">${parentOrigin}</p>`;
+                } else if (isInsideIframe) {
+                    originDisplayElement.innerHTML = `<p class="text-sm font-semibold text-red-700">Tidak Tersedia di Browser Ini</p>`;
+                } else {
+                    originDisplayElement.innerHTML = `<p class="text-sm font-semibold text-yellow-700">Tidak dalam Iframe</p>`;
+                }
+                
+                // 3. Dapatkan User Agent
+                const userAgent = navigator.userAgent;
+                userAgentDisplayElement.innerHTML = `<p class="text-xs text-gray-800">${userAgent}</p>`;
+
+                // 4. Dapatkan Resolusi Layar
+                const screenRes = `${screen.width} x ${screen.height}`;
+                screenResDisplayElement.innerHTML = `<p class="text-sm font-semibold text-gray-800">${screenRes}</p>`;
+
+                if (isInsideIframe) {
+                     infoElement.textContent = 'Informasi berhasil dideteksi dari lingkungan peramban.';
+                } else {
+                     infoElement.textContent = 'Halaman ini tidak sedang dimuat di dalam sebuah iframe.';
                 }
 
             } catch (error) {
-                // Catch any potential security errors or other issues.
-                console.error("Error detecting parent info:", error);
-                domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-red-700">Terjadi Kesalahan</p>`;
-                urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-red-700 break-all">Terjadi Kesalahan</p>`;
-                infoElement.textContent = 'Terjadi kesalahan saat mencoba mendeteksi info pemanggil. Lihat konsol untuk detail.';
+                console.error("Error detecting environment info:", error);
+                infoElement.textContent = 'Terjadi kesalahan saat mencoba mendeteksi info. Lihat konsol untuk detail.';
+                const allDisplays = [urlDisplayElement, originDisplayElement, userAgentDisplayElement, screenResDisplayElement];
+                allDisplays.forEach(el => {
+                    if(el) el.innerHTML = `<p class="text-sm font-semibold text-red-700">Gagal Memuat</p>`;
+                });
             }
         };
     </script>
