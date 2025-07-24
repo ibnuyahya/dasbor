@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gambar Bersinar dan Meredup dengan Partikel Terbang dan Bintang Jatuh</title>
+    <!-- Tailwind CSS CDN untuk styling yang cepat dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Mengatur font Inter sebagai default */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000; /* Warna latar belakang hitam */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Memastikan body mengisi seluruh tinggi viewport */
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden; /* Mencegah scroll jika ada konten di luar */
+        }
+
+        /* Kontainer utama yang akan menjaga rasio aspek 16:9 */
+        .aspect-ratio-container {
+            position: relative;
+            width: 80vw; /* Menggunakan lebar viewport untuk responsivitas */
+            max-width: 1280px; /* Contoh: Maksimal lebar untuk 720p (1280x720) */
+            padding-bottom: 45%; /* 9 / 16 * 80vw = 45% (untuk 16:9) */
+            height: 0; /* Mengatur tinggi ke 0 karena padding-bottom yang akan menentukan tinggi */
+            overflow: hidden;
+            background-color: transparent; /* Menghapus warna latar belakang */
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        /* Kontainer untuk gambar dan canvas, akan mengisi penuh aspect-ratio-container */
+        .content-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* Styling untuk gambar */
+        #imageToGlow {
+            width: 100%;
+            height: 100%; /* Memastikan gambar mengisi tinggi penuh content-wrapper */
+            object-fit: cover; /* Memastikan gambar menutupi seluruh area tanpa distorsi */
+            border-radius: 0;
+            transition: filter 0.1s ease-out; /* Transisi halus untuk perubahan filter */
+            box-shadow: none;
+            position: relative;
+            z-index: 1; /* Pastikan gambar di bawah canvas partikel */
+        }
+        /* Styling untuk canvas partikel */
+        #particlesCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2; /* Pastikan canvas di atas gambar */
+            pointer-events: none; /* Memungkinkan interaksi dengan elemen di bawahnya */
+        }
+    </style>
+</head>
+<body>
+    <div class="aspect-ratio-container">
+        <div class="content-wrapper">
+            <!-- Gambar yang akan diubah efeknya -->
+            <img id="imageToGlow" src="https://emas3.ui.ac.id/pluginfile.php/5/theme_lambda2/login_bg_img_1/1752828464/EMas%203.jpg" alt="Gambar Latar Belakang UI" onerror="this.onerror=null;this.src='https://placehold.co/1920x1080/000000/FFFFFF?text=Gambar+Tidak+Ditemukan';">
+
+            <!-- Canvas untuk partikel dan bintang jatuh -->
+            <canvas id="particlesCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Mendapatkan elemen gambar
+        const imageToGlow = document.getElementById('imageToGlow');
+
+        let glowIntensity = 0; // Inisialisasi intensitas cahaya
+        let saturationValue = 100; // Inisialisasi nilai saturasi (100% = normal)
+        let increasing = true; // Arah perubahan (meningkat atau menurun)
+
+        // Fungsi untuk menerapkan filter kecerahan, kontras, dan saturasi pada gambar
+        function animateGlow() {
+            if (increasing) {
+                glowIntensity += 0.5; // Mengurangi kecepatan perubahan glow untuk periode yang lebih lama
+                saturationValue += 0.25; // Mengurangi kecepatan perubahan saturasi
+                if (glowIntensity >= 100) {
+                    increasing = false; // Jika mencapai maksimum, mulai menurun
+                }
+            } else {
+                glowIntensity -= 0.5; // Mengurangi kecepatan perubahan glow untuk periode yang lebih lama
+                saturationValue -= 0.25; // Mengurangi kecepatan perubahan saturasi
+                if (glowIntensity <= 0) {
+                    increasing = true; // Jika mencapai minimum, mulai meningkat
+                }
+            }
+
+            // Memastikan nilai saturasi tetap dalam rentang yang wajar (misal: 100% hingga 150%)
+            saturationValue = Math.max(100, Math.min(150, saturationValue));
+
+            // Menerapkan filter kecerahan, kontras, dan saturasi untuk efek bersinar/meredup
+            const brightness = 100 + (glowIntensity * 0.3); // Maksimal 130% (sedikit lebih terang)
+            const contrast = 100 + (glowIntensity * 0.12); // Maksimal 112% (sedikit lebih kontras)
+
+            imageToGlow.style.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturationValue}%)`;
+        }
+
+        // --- Kode untuk Partikel dan Bintang Jatuh ---
+        const canvas = document.getElementById('particlesCanvas');
+        const ctx = canvas.getContext('2d');
+        const particles = []; // Array untuk partikel biasa
+        const shootingStars = []; // Array untuk bintang jatuh
+        const numParticles = 30; // Jumlah partikel biasa
+        const maxActiveStars = 1; // Jumlah bintang jatuh maksimal yang aktif bersamaan
+
+        // Objek untuk menyimpan batas gambar relatif terhadap canvas
+        let imageBounds = { x: 0, y: 0, width: 0, height: 0 };
+
+        // Fungsi untuk mengatur ukuran canvas agar sesuai dengan container
+        // dan menghitung batas gambar relatif terhadap canvas
+        function resizeCanvas() {
+            const container = canvas.parentElement; /* content-wrapper */
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+
+            // Dapatkan posisi gambar relatif terhadap viewport
+            const imageRect = imageToGlow.getBoundingClientRect();
+            // Dapatkan posisi canvas relatif terhadap viewport
+            const canvasRect = canvas.getBoundingClientRect();
+
+            // Hitung batas gambar relatif terhadap canvas (ini akan mencakup seluruh area jika gambar mengisi 100% parent)
+            imageBounds.x = imageRect.left - canvasRect.left;
+            imageBounds.y = imageRect.top - canvasRect.top;
+            imageBounds.width = imageRect.width;
+            imageBounds.height = imageRect.height;
+
+            // Reset partikel dan bintang jatuh agar muncul di dalam batas gambar yang baru
+            particles.forEach(p => p.reset());
+            shootingStars.forEach(s => s.reset());
+        }
+
+        // --- Definisi Kelas Partikel Biasa ---
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = imageBounds.x + Math.random() * imageBounds.width;
+                this.y = imageBounds.y + Math.random() * imageBounds.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.8;
+                this.speedY = (Math.random() - 0.5) * 0.8;
+                this.opacity = Math.random() * 0.8 + 0.2;
+                this.opacitySpeed = (Math.random() * 0.01 + 0.005) * (Math.random() > 0.5 ? 1 : -1);
+                this.color = Math.random() > 0.5 ? `rgba(60, 150, 255, ${this.opacity})` : `rgba(255, 220, 0, ${this.opacity})`;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                this.opacity += this.opacitySpeed;
+                if (this.opacity > 1 || this.opacity < 0.2) {
+                    this.opacitySpeed *= -1;
+                    this.opacity = Math.max(0.2, Math.min(1, this.opacity));
+                }
+                const currentColor = this.color.split(',');
+                this.color = `${currentColor[0]},${currentColor[1]},${currentColor[2]}, ${this.opacity})`;
+
+                if (this.x < imageBounds.x || this.x > imageBounds.x + imageBounds.width ||
+                    this.y < imageBounds.y || this.y > imageBounds.y + imageBounds.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = this.size * 2;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+            }
+        }
+
+        // --- Definisi Kelas Bintang Jatuh ---
+        class ShootingStar {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                // Tentukan apakah bintang jatuh muncul dari tepi atas atau tepi kiri gambar
+                if (Math.random() < 0.5) { // Muncul dari tepi atas
+                    this.x = imageBounds.x + Math.random() * imageBounds.width;
+                    this.y = imageBounds.y - 10; // Mulai sedikit di atas gambar
+                } else { // Muncul dari tepi kiri
+                    this.x = imageBounds.x - 10; // Mulai sedikit di kiri gambar
+                    this.y = imageBounds.y + Math.random() * imageBounds.height;
+                }
+
+                this.size = Math.random() * 1 + 0.5; // Ukuran kepala bintang lebih kecil (0.5-1.5px)
+                this.speed = Math.random() * 2 + 1; // Kecepatan lebih lambat (1-3px/frame)
+                this.angle = Math.PI / 4 + (Math.random() * (Math.PI / 8) - Math.PI / 16); // Arah ke kanan bawah (sekitar 45 derajat)
+                this.dx = Math.cos(this.angle) * this.speed;
+                this.dy = Math.sin(this.angle) * this.speed;
+
+                this.tailLength = Math.random() * 20 + 10; // Panjang ekor lebih pendek (10-30px)
+                this.opacity = 0.8; // Mulai sedikit transparan
+                this.fadeSpeed = 0.03; // Kecepatan memudar lebih cepat
+
+                this.color = `rgba(255, 255, 255, ${this.opacity})`; // Warna dasar putih
+            }
+
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                this.opacity -= this.fadeSpeed;
+
+                // Reset jika keluar dari batas gambar atau sudah pudar sepenuhnya
+                // ATAU jika sudah mencapai 1/3 bagian bawah gambar
+                const disappearThresholdY = imageBounds.y + imageBounds.height * (2/3); // 2/3 dari tinggi gambar
+                if (this.x > imageBounds.x + imageBounds.width + this.tailLength ||
+                    this.y > imageBounds.y + imageBounds.height + this.tailLength ||
+                    this.opacity <= 0 ||
+                    this.y > disappearThresholdY) { // Bintang jatuh menghilang di 1/3 bagian bawah
+                    this.reset();
+                }
+            }
+
+            draw() {
+                if (this.opacity <= 0) return; // Jangan gambar jika sudah pudar
+
+                ctx.save();
+                ctx.beginPath();
+                
+                // Gambar kepala bintang
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.shadowBlur = this.size * 3;
+                ctx.shadowColor = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.fill();
+
+                // Gambar ekor (garis gradien)
+                const tailX_start = this.x - this.dx * this.tailLength;
+                const tailY_start = this.y - this.dy * this.tailLength;
+
+                const gradient = ctx.createLinearGradient(tailX_start, tailY_start, this.x, this.y);
+                gradient.addColorStop(0, `rgba(255, 255, 255, 0)`); // Transparan di ujung ekor
+                gradient.addColorStop(0.5, `rgba(255, 255, 255, ${this.opacity * 0.3})`); // Opasitas ekor lebih tipis
+                gradient.addColorStop(1, `rgba(255, 255, 255, ${this.opacity})`); // Penuh opasitas di kepala
+
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = this.size * 0.8; // Ketebalan ekor lebih tipis
+                ctx.lineCap = 'round'; // Ujung ekor bulat
+
+                ctx.moveTo(tailX_start, tailY_start);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        // Inisialisasi partikel biasa
+        for (let i = 0; i < numParticles; i++) {
+            particles.push(new Particle());
+        }
+
+        // Variabel untuk mengontrol kemunculan bintang jatuh
+        let starSpawnCounter = 0;
+        const starSpawnRate = 360; // Spawn bintang jatuh rata-rata setiap X frame (semakin besar semakin jarang)
+
+        // Loop animasi utama
+        function animateAllEffects() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Bersihkan seluruh canvas
+
+            // Gambar latar belakang dengan efek glow (Layer 1)
+            animateGlow();
+
+            // Gambar partikel biasa (Layer 2)
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+
+            // Spawn bintang jatuh sesekali (Layer 3)
+            starSpawnCounter++;
+            if (starSpawnCounter >= starSpawnRate && shootingStars.length < maxActiveStars) {
+                shootingStars.push(new ShootingStar());
+                starSpawnCounter = 0; // Reset counter
+            }
+
+            // Perbarui dan gambar bintang jatuh
+            for (let i = shootingStars.length - 1; i >= 0; i--) {
+                shootingStars[i].update();
+                shootingStars[i].draw();
+                if (shootingStars[i].opacity <= 0 ||
+                    shootingStars[i].y > imageBounds.y + imageBounds.height + shootingStars[i].tailLength ||
+                    shootingStars[i].x > imageBounds.x + imageBounds.width + shootingStars[i].tailLength) {
+                    shootingStars.splice(i, 1); // Hapus bintang jatuh yang sudah tidak terlihat
+                }
+            }
+
+            requestAnimationFrame(animateAllEffects); // Lanjutkan animasi
+        }
+
+        // Memulai animasi setelah halaman dimuat
+        window.onload = function() {
+            // Pastikan gambar sudah dimuat sebelum mengatur ukuran canvas
+            imageToGlow.onload = () => {
+                resizeCanvas(); // Atur ukuran canvas saat dimuat dan hitung batas gambar
+                animateAllEffects(); // Mulai animasi utama
+            };
+
+            // Jika gambar sudah di-cache, panggil onload secara manual
+            if (imageToGlow.complete && imageToGlow.naturalHeight !== 0) {
+                imageToGlow.onload();
+            }
+        };
+
+        // Menyesuaikan ukuran canvas dan batas gambar saat jendela diubah ukurannya
+        window.addEventListener('resize', resizeCanvas);
+    </script>
+</body>
+</html>
