@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pemeriksa Domain Induk</title>
+    <title>Pemeriksa Info Pemanggil</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,26 +15,38 @@
     </style>
 </head>
 <body class="h-full flex items-center justify-center p-6 bg-gray-100">
-    <div class="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
+    <div class="max-w-xl w-full bg-white rounded-xl shadow-lg p-8 text-center">
         <div class="mb-6">
             <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 009-9m-9 9a9 9 0 00-9-9" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
         </div>
-        <h1 class="text-2xl font-bold text-gray-800 mb-2">Domain Pemanggil Iframe</h1>
-        <p class="text-gray-600 mb-6">Halaman ini dimuat dari domain berikut:</p>
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Info Pemanggil Iframe</h1>
         
-        <div id="domain-display" class="bg-gray-100 rounded-lg p-4">
-            <p class="text-lg font-mono font-semibold text-blue-700 break-all">Mendeteksi...</p>
+        <!-- Bagian untuk Domain -->
+        <div class="text-left mb-5">
+            <h2 class="text-lg font-semibold text-gray-700 mb-2">Domain Pemanggil:</h2>
+            <div id="domain-display" class="bg-gray-100 rounded-lg p-3">
+                <p class="text-md font-mono font-semibold text-blue-700 break-all">Mendeteksi...</p>
+            </div>
         </div>
 
-        <p id="info-message" class="text-sm text-gray-500 mt-4"></p>
+        <!-- Bagian untuk URL Lengkap -->
+        <div class="text-left">
+            <h2 class="text-lg font-semibold text-gray-700 mb-2">URL Lengkap Pemanggil:</h2>
+            <div id="url-display" class="bg-gray-100 rounded-lg p-3">
+                <p class="text-sm font-mono text-blue-700 break-all">Mendeteksi...</p>
+            </div>
+        </div>
+
+        <p id="info-message" class="text-sm text-gray-500 mt-6"></p>
     </div>
 
     <script>
-        // This script runs when the page loads to detect the parent domain.
+        // This script runs when the page loads to detect the parent domain and URL.
         window.onload = function() {
-            const displayElement = document.getElementById('domain-display');
+            const domainDisplayElement = document.getElementById('domain-display');
+            const urlDisplayElement = document.getElementById('url-display');
             const infoElement = document.getElementById('info-message');
 
             try {
@@ -49,24 +61,29 @@
                     if (referrerUrl) {
                         // Use the URL constructor to easily parse the URL and get the hostname (domain).
                         const parentDomain = new URL(referrerUrl).hostname;
-                        displayElement.innerHTML = `<p class="text-lg font-mono font-semibold text-green-700 break-all">${parentDomain}</p>`;
-                        infoElement.textContent = 'Domain berhasil dideteksi menggunakan document.referrer.';
+                        
+                        domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-green-700 break-all">${parentDomain}</p>`;
+                        urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-green-700 break-all">${referrerUrl}</p>`;
+                        infoElement.textContent = 'Domain dan URL berhasil dideteksi menggunakan document.referrer.';
                     } else {
                         // This can happen if the parent page has a strict Referrer-Policy.
-                        displayElement.innerHTML = `<p class="text-lg font-mono font-semibold text-red-700">Tidak Dapat Diakses</p>`;
-                        infoElement.textContent = 'Tidak dapat mendeteksi domain induk. Kemungkinan halaman induk memiliki kebijakan "Referrer-Policy: no-referrer".';
+                        domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-red-700">Tidak Dapat Diakses</p>`;
+                        urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-red-700 break-all">Tidak Dapat Diakses</p>`;
+                        infoElement.textContent = 'Tidak dapat mendeteksi info pemanggil. Kemungkinan halaman induk memiliki kebijakan "Referrer-Policy: no-referrer".';
                     }
                 } else {
                     // This message shows if the page is opened directly, not in an iframe.
-                    displayElement.innerHTML = `<p class="text-lg font-mono font-semibold text-yellow-700">Tidak dalam Iframe</p>`;
+                    domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-yellow-700">Tidak dalam Iframe</p>`;
+                    urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-yellow-700 break-all">Tidak dalam Iframe</p>`;
                     infoElement.textContent = 'Halaman ini tidak sedang dimuat di dalam sebuah iframe.';
                 }
 
             } catch (error) {
                 // Catch any potential security errors or other issues.
-                console.error("Error detecting parent domain:", error);
-                displayElement.innerHTML = `<p class="text-lg font-mono font-semibold text-red-700">Terjadi Kesalahan</p>`;
-                infoElement.textContent = 'Terjadi kesalahan saat mencoba mendeteksi domain. Lihat konsol untuk detail.';
+                console.error("Error detecting parent info:", error);
+                domainDisplayElement.innerHTML = `<p class="text-md font-mono font-semibold text-red-700">Terjadi Kesalahan</p>`;
+                urlDisplayElement.innerHTML = `<p class="text-sm font-mono text-red-700 break-all">Terjadi Kesalahan</p>`;
+                infoElement.textContent = 'Terjadi kesalahan saat mencoba mendeteksi info pemanggil. Lihat konsol untuk detail.';
             }
         };
     </script>
